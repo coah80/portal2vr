@@ -14,3 +14,7 @@ ViewmodelPosCustomOffsetZ=0.0
 ViewmodelAngCustomOffsetX=0.0
 ViewmodelAngCustomOffsetY=0.0
 ViewmodelAngCustomOffsetZ=0.0
+Body=true
+HapticStrength=1.0
+CinematicCamera=true
+PhysicalInteraction=true

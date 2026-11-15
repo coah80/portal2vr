@@ -87,6 +87,7 @@ public:
     static void errorMsg(const char *msg);
 
     CBaseEntity *GetClientEntity(int entityIndex);
+    void *GetClientEntityFromHandle(int handle);
     char *getNetworkName(uintptr_t *entity);
     void ClientCmd(const char *szCmdString);
     void ClientCmd_Unrestricted(const char *szCmdString);

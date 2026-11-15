@@ -4,6 +4,7 @@
 #include "game.h"
 #include "hooks.h"
 #include "trace.h"
+#include "interact.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -14,6 +15,9 @@
 #include <type_traits>
 #include <algorithm>
 #include <d3d9_vr.h>
+#include "body.h"
+#include "haptics.h"
+#include "cinematic.h"
 
 VR::VR(Game *game) 
 {
@@ -139,9 +143,15 @@ int VR::SetActionManifest(const char *fileName)
     m_Input->GetActionHandle("/actions/main/in/ShowHUD", &m_ShowHUD);
     m_Input->GetActionHandle("/actions/main/in/Pause", &m_Pause);
 
+    m_Input->GetActionHandle("/actions/base/in/skeleton_lefthand", &m_SkeletonLeft);
+    m_Input->GetActionHandle("/actions/base/in/skeleton_righthand", &m_SkeletonRight);
+
     m_Input->GetActionSetHandle("/actions/main", &m_ActionSet);
-    m_ActiveActionSet = {};
-    m_ActiveActionSet.ulActionSet = m_ActionSet;
+    m_Input->GetActionSetHandle("/actions/base", &m_BaseActionSet);
+    m_ActiveActionSets[0] = {};
+    m_ActiveActionSets[0].ulActionSet = m_ActionSet;
+    m_ActiveActionSets[1] = {};
+    m_ActiveActionSets[1].ulActionSet = m_BaseActionSet;
 
     return 0;
 }
@@ -206,6 +216,14 @@ void VR::Update()
     SubmitVRTextures();
     UpdatePosesAndActions();
     UpdateTracking();
+
+    {
+        static auto lastFrame = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+        float seconds = std::chrono::duration<float>(now - lastFrame).count();
+        lastFrame = now;
+        Haptics::Frame(seconds);
+    }
 
     if (m_Game->m_VguiSurface->IsCursorVisible()) {
         ProcessMenuInput();
@@ -415,18 +433,17 @@ void VR::GetPoses()
     if (m_LeftHanded)
         std::swap(leftControllerIndex, rightControllerIndex);
 
-    vr::TrackedDevicePose_t leftControllerPose = m_Poses[leftControllerIndex];
-    vr::TrackedDevicePose_t rightControllerPose = m_Poses[rightControllerIndex];
-
     GetPoseData(hmdPose, m_HmdPose);
-    GetPoseData(leftControllerPose, m_LeftControllerPose);
-    GetPoseData(rightControllerPose, m_RightControllerPose);
+    if (leftControllerIndex < vr::k_unMaxTrackedDeviceCount)
+        GetPoseData(m_Poses[leftControllerIndex], m_LeftControllerPose);
+    if (rightControllerIndex < vr::k_unMaxTrackedDeviceCount)
+        GetPoseData(m_Poses[rightControllerIndex], m_RightControllerPose);
 }
 
 void VR::UpdatePosesAndActions() 
 {
     vr::VRCompositor()->WaitGetPoses(m_Poses, vr::k_unMaxTrackedDeviceCount, NULL, 0);
-    m_Input->UpdateActionState(&m_ActiveActionSet, sizeof(vr::VRActiveActionSet_t), 1);
+    m_Input->UpdateActionState(m_ActiveActionSets, sizeof(vr::VRActiveActionSet_t), 2);
 }
 
 void VR::GetViewParameters() 
@@ -690,7 +707,7 @@ void VR::ProcessInput()
         m_Game->ClientCmd_Unrestricted("-duck");
     }
 
-    if (PressedDigitalAction(m_ActionUse))
+    if (Interact::WantsUse(PressedDigitalAction(m_ActionUse)))
     {
         m_Game->ClientCmd_Unrestricted("+use");
     }
@@ -895,6 +912,58 @@ Vector VR::GetRightControllerAbsPos(Vector eyePosition)
     return position;
 }
 
+Vector VR::GetLeftControllerAbsPos()
+{
+    Vector position = m_SetupOrigin + m_LeftControllerPosRel;
+
+    if (m_6DOF)
+        position += m_HmdPosRelative;
+
+    return position;
+}
+
+bool VR::GripHeld(const char* source)
+{
+    vr::VRInputValueHandle_t device = vr::k_ulInvalidInputValueHandle;
+    if (m_Input->GetInputSourceHandle(source, &device) != vr::VRInputError_None)
+        return false;
+
+    vr::InputDigitalActionData_t data = {};
+    if (m_Input->GetDigitalActionData(m_ActionUse, &data, sizeof(data), device) != vr::VRInputError_None)
+        return false;
+    return data.bActive && data.bState;
+}
+
+void VR::PublishInteract()
+{
+    Interact::Input input;
+    input.valid = m_IsVREnabled;
+
+    Vector right = GetRightControllerAbsPos();
+    Vector left = GetLeftControllerAbsPos();
+
+    vr::TrackedDeviceIndex_t leftIndex = m_System->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);
+    vr::TrackedDeviceIndex_t rightIndex = m_System->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand);
+    const char* leftSource = "/user/hand/left";
+    const char* rightSource = "/user/hand/right";
+    if (m_LeftHanded)
+    {
+        std::swap(leftIndex, rightIndex);
+        std::swap(leftSource, rightSource);
+    }
+
+    auto tracked = [&](vr::TrackedDeviceIndex_t index)
+    {
+        return index < vr::k_unMaxTrackedDeviceCount && m_Poses[index].bPoseIsValid;
+    };
+
+    input.hand[Interact::Left] = { tracked(leftIndex), GripHeld(leftSource), left, m_LeftControllerForward };
+    input.hand[Interact::Right] = { tracked(rightIndex), GripHeld(rightSource), right, m_RightControllerForward };
+    input.gunTip = right + m_RightControllerForward * 16.0f;
+
+    Interact::Publish(input);
+}
+
 Vector VR::GetRecommendedViewmodelAbsPos(Vector eyePosition)
 {
     Vector viewmodelPos = GetRightControllerAbsPos(eyePosition);
@@ -1049,6 +1118,14 @@ void VR::UpdateTracking()
 
     m_RightControllerPosRel = hmdToController * m_VRScale;
 
+    Vector hmdToLeftController = leftControllerPosLocal - hmdPosLocal;
+    VectorPivotXY(hmdToLeftController, { 0, 0, 0 }, m_RotationOffset.y);
+    m_LeftControllerPosRel = hmdToLeftController * m_VRScale;
+
+    leftControllerAngLocal.x += m_RotationOffset.x;
+    leftControllerAngLocal.y += m_RotationOffset.y;
+    leftControllerAngLocal.z += m_RotationOffset.z;
+
     //rightControllerAngLocal += m_RotationOffset;
     rightControllerAngLocal.x += m_RotationOffset.x;
     rightControllerAngLocal.y += m_RotationOffset.y;
@@ -1059,6 +1136,8 @@ void VR::UpdateTracking()
 
     QAngle::AngleVectors(leftControllerAngLocal, &m_LeftControllerForward, &m_LeftControllerRight, &m_LeftControllerUp);
     QAngle::AngleVectors(rightControllerAngLocal, &m_RightControllerForward, &m_RightControllerRight, &m_RightControllerUp);
+
+    PublishBody();
 
     const float offset = -30;
 
@@ -1072,6 +1151,8 @@ void VR::UpdateTracking()
     // controller angles
     QAngle::VectorAngles(m_LeftControllerForward, m_LeftControllerUp, m_LeftControllerAngAbs);
     QAngle::VectorAngles(m_RightControllerForward, m_RightControllerUp, m_RightControllerAngAbs);
+
+    PublishInteract();
     m_RightControllerAngAbs.Normalize();
 
     PositionAngle viewmodelOffset = PositionAngle{ {4.5, -1, 1.5}, {0,0,0} };
@@ -1095,6 +1176,62 @@ void VR::UpdateTracking()
     // Viewmodel roll offset
     m_ViewmodelRight = VectorRotate(m_ViewmodelRight, m_ViewmodelForward, m_ViewmodelAngOffset.z);
     m_ViewmodelUp = VectorRotate(m_ViewmodelUp, m_ViewmodelForward, m_ViewmodelAngOffset.z);
+}
+
+static rig::V3 ToRig(const Vector& v)
+{
+    return { v.x, v.y, v.z };
+}
+
+void VR::PublishBody()
+{
+    Body::Input input;
+    input.valid = m_IsVREnabled;
+    Vector head = m_6DOF ? m_HmdPosRelative : Vector(0, 0, 0);
+    input.eyeOffset = ToRig(head + m_HmdForward * -(m_EyeZ * m_VRScale));
+    input.hmdForward = ToRig(m_HmdForward);
+    input.hmdRight = ToRig(m_HmdRight);
+    input.hmdUp = ToRig(m_HmdUp);
+    input.trigger = PressedDigitalAction(m_ActionPrimaryAttack) ? 1.0f : 0.0f;
+
+    vr::TrackedDeviceIndex_t leftIndex = m_System->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_LeftHand);
+    vr::TrackedDeviceIndex_t rightIndex = m_System->GetTrackedDeviceIndexForControllerRole(vr::TrackedControllerRole_RightHand);
+    vr::VRActionHandle_t leftSkeleton = m_SkeletonLeft;
+    vr::VRActionHandle_t rightSkeleton = m_SkeletonRight;
+    if (m_LeftHanded)
+    {
+        std::swap(leftIndex, rightIndex);
+        std::swap(leftSkeleton, rightSkeleton);
+    }
+
+    auto fill = [&](Body::HandInput& hand, vr::TrackedDeviceIndex_t index, vr::VRActionHandle_t skeleton,
+                    const Vector& relative, const Vector& forward, const Vector& right, const Vector& up)
+    {
+        hand.tracked = index != vr::k_unTrackedDeviceIndexInvalid && index < vr::k_unMaxTrackedDeviceCount && m_Poses[index].bPoseIsValid;
+        hand.position = ToRig(relative + head);
+        hand.forward = ToRig(forward);
+        hand.right = ToRig(right);
+        hand.up = ToRig(up);
+
+        vr::VRSkeletalSummaryData_t summary = {};
+        hand.skeletal = skeleton != vr::k_ulInvalidActionHandle
+            && m_Input->GetSkeletalSummaryData(skeleton, vr::VRSummaryType_FromDevice, &summary) == vr::VRInputError_None;
+        for (int f = 0; f < rig::FingerCount; ++f)
+            hand.curl[f] = summary.flFingerCurl[f];
+    };
+
+    fill(input.hand[rig::Left], leftIndex, leftSkeleton, m_LeftControllerPosRel, m_LeftControllerForward, m_LeftControllerRight, m_LeftControllerUp);
+    fill(input.hand[rig::Right], rightIndex, rightSkeleton, m_RightControllerPosRel, m_RightControllerForward, m_RightControllerRight, m_RightControllerUp);
+
+    Body::Publish(input);
+}
+
+void VR::ApplyFeatureSettings()
+{
+    Body::SetEnabled(m_BodyEnabled);
+    Haptics::SetStrength(m_HapticStrength);
+    Cinematic::SetEnabled(m_CinematicCamera);
+    Interact::SetEnabled(m_PhysicalInteraction);
 }
 
 Vector VR::GetViewAngle()
@@ -1330,6 +1467,13 @@ static void concatErrorMsg(Game& game, const Ts&... args)
     game.errorMsg(oss.str().c_str());
 }
 
+static std::string trimConfigValue(std::string value)
+{
+    value.erase(0, value.find_first_not_of(" \t\r"));
+    value.erase(value.find_last_not_of(" \t\r") + 1);
+    return value;
+}
+
 // [CONFIG PARSING UTILITY FUNCTION]
 // Attempts to parse an entry with key 'key' from the provided 'userConfig'. If the key is
 // missing or if the parsing fails, 'defaultValue' is returned and an error message is
@@ -1350,11 +1494,11 @@ try
         return defaultValue;
     }
 
-    const std::string& configValue = itr->second;
+    const std::string configValue = trimConfigValue(itr->second);
 
     if constexpr (std::is_same_v<T, bool>)
     {
-        return configValue == "true";
+        return configValue == "true" || configValue == "1";
     }
     else if constexpr(std::is_floating_point_v<T>)
     {
@@ -1438,6 +1582,11 @@ void VR::ParseConfigFile()
     parseOrDefault("RenderWindow", m_RenderWindow, 0);
     parseXYZOrDefaultZero("ViewmodelPosCustomOffset", m_ViewmodelPosCustomOffset);
     parseXYZOrDefaultZero("ViewmodelAngCustomOffset", m_ViewmodelAngCustomOffset);
+    parseOrDefault("Body", m_BodyEnabled, true);
+    parseOrDefault("HapticStrength", m_HapticStrength, 1.0f);
+    parseOrDefault("CinematicCamera", m_CinematicCamera, true);
+    parseOrDefault("PhysicalInteraction", m_PhysicalInteraction, true);
+    ApplyFeatureSettings();
 }
 
 void VR::WaitForConfigUpdate()
@@ -1468,11 +1617,9 @@ void VR::WaitForConfigUpdate()
             concatErrorMsg(
                 *m_Game, "Failed to parse 'config.txt' (", e.what(), ")");
         }
-        catch (const std::filesystem::filesystem_error &e)
+        catch (const std::filesystem::filesystem_error &)
         {
-            concatErrorMsg(
-                *m_Game, "'config.txt' not found. (", e.what(), ")");
-            
+            ApplyFeatureSettings();
             return;
         }
         

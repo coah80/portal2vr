@@ -5,6 +5,9 @@
 #include "sdk_server.h"
 #include "vr.h"
 #include "offsets.h"
+#include "haptics.h"
+#include "interact.h"
+#include "cinematic.h"
 #include <iostream>
 
 Hooks::Hooks(Game *game)
@@ -231,6 +234,11 @@ void __fastcall Hooks::dRenderView(void *ecx, void *edx, CViewSetup &setup, CVie
 	hudViewSetup.m_nUnscaledWidth = m_VR->m_RenderWidth;
 	hudViewSetup.m_nUnscaledHeight = m_VR->m_RenderHeight;
 
+	int playerIndex = m_Game->m_EngineClient->GetLocalPlayer();
+	C_BasePlayer* localPlayer = (C_BasePlayer*)m_Game->GetClientEntity(playerIndex);
+
+	bool cinematic = Cinematic::Update(localPlayer, setup);
+
 	Vector position = setup.origin;
 
 	if (m_VR->m_ApplyPortalRotationOffset) {
@@ -252,7 +260,7 @@ void __fastcall Hooks::dRenderView(void *ecx, void *edx, CViewSetup &setup, CVie
 	m_VR->m_SetupOrigin = position;
 
 	Vector hmdAngle = m_VR->GetViewAngle();
-	QAngle inGameAngle(hmdAngle.x, hmdAngle.y, hmdAngle.z);
+	QAngle inGameAngle = cinematic ? Cinematic::GameAngles() : QAngle(hmdAngle.x, hmdAngle.y, hmdAngle.z);
 	m_Game->m_EngineClient->SetViewAngles(inGameAngle);
 
 	float aspect = setup.m_flAspectRatio;
@@ -272,9 +280,6 @@ void __fastcall Hooks::dRenderView(void *ecx, void *edx, CViewSetup &setup, CVie
 
 	CViewSetup leftEyeView = setup;
 	CViewSetup rightEyeView = setup;
-
-	int playerIndex = m_Game->m_EngineClient->GetLocalPlayer();
-	C_BasePlayer* localPlayer = (C_BasePlayer*)m_Game->GetClientEntity(playerIndex);
 
 	// Left eye CViewSetup
 	QAngle tempAngle = QAngle(setup.angles.x, setup.angles.y, setup.angles.z);
@@ -340,7 +345,8 @@ bool __fastcall Hooks::dCreateMove(void *ecx, void *edx, float flInputSampleTime
 
 	if (m_VR->m_IsVREnabled)
 	{
-		cmd->viewangles = m_VR->m_HmdAngAbs;
+		cmd->viewangles = Cinematic::Active() ? Cinematic::GameAngles() : m_VR->m_HmdAngAbs;
+		Haptics::Think(m_Game->GetClientEntity(m_Game->m_EngineClient->GetLocalPlayer()));
 
 		vr::InputAnalogActionData_t analogActionData;
 		if (m_VR->GetAnalogActionData(m_VR->m_ActionWalk, analogActionData)) {
@@ -432,7 +438,12 @@ float __fastcall Hooks::dProcessUsercmds(void *ecx, void *edx, edict_t *player, 
 	int index = EntityIndex(pPlayer);
 	m_Game->m_CurrentUsercmdID = index;
 
-	return hkProcessUsercmds.fOriginal(ecx, player, buf, numcmds, totalcmds, dropped_packets, ignore, paused);
+	float result = hkProcessUsercmds.fOriginal(ecx, player, buf, numcmds, totalcmds, dropped_packets, ignore, paused);
+
+	if (m_VR->m_IsVREnabled && index == m_Game->m_EngineClient->GetLocalPlayer())
+		Interact::ServerTick(pPlayer);
+
+	return result;
 }
 
 int Hooks::dWriteUsercmd(bf_write *buf, CUserCmd *to, CUserCmd *from)
@@ -628,7 +639,9 @@ Vector* Hooks::dWeapon_ShootPosition(void* ecx, void* edx, Vector* eyePos)
 	auto vrPlayer = m_Game->m_PlayersVRInfo[index];
 
 	if (m_VR->m_IsVREnabled && localIndex == index) {
-		*result = m_VR->GetRightControllerAbsPos();	
+		*result = m_VR->m_OverrideEyeAngles && Interact::HoldHand() == Interact::Left
+			? m_VR->GetLeftControllerAbsPos()
+			: m_VR->GetRightControllerAbsPos();
 	}
 	else if (vrPlayer.isUsingVR)
 	{
@@ -691,6 +704,9 @@ void __fastcall Hooks::dPlayerPortalled(void* ecx, void* edx, void* a2, __int64 
 	m_Game->m_EngineClient->GetViewAngles(angAbsRotationBefore);
 
 	hkPlayerPortalled.fOriginal(ecx, a2, a3);
+
+	if (m_VR->m_IsVREnabled)
+		Haptics::OnPortalled();
 
 	QAngle angAbsRotationAfter;
 	m_Game->m_EngineClient->GetViewAngles(angAbsRotationAfter);
@@ -894,6 +910,8 @@ QAngle& __fastcall Hooks::dEyeAngles(void* ecx, void* edx) {
 		auto& vrPlayer = m_Game->m_PlayersVRInfo[index];
 
 		if (m_VR->m_IsVREnabled && localIndex == index) {
+			if (Interact::HoldHand() == Interact::Left)
+				return m_VR->m_LeftControllerAngAbs;
 			return m_VR->GetRightControllerAbsAngleConst();
 		}
 		else if (vrPlayer.isUsingVR)

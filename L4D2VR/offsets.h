@@ -53,7 +53,7 @@ public:
     Offset ReadUserCmd =                 { "server.dll", 0x205100, "55 8B EC 53 8B 5D 10 56 57 8B 7D 0C 53" };
     Offset ProcessUsercmds =             { "server.dll", 0x170300, "55 8B EC B8 ? ? ? ? E8 ? ? ? ? 0F 57 C0 53 56 57 B9 ? ? ? ? 8D 85 ? ? ? ? 33 DB" }; //?
     Offset CBaseEntity_entindex =        { "server.dll", 0x39F00, "8B 41 1C 85 C0 75 01 C3 8B 0D ? ? ? ? 2B 41 58 C1 F8 04 C3 CC"};
-    Offset EyePosition =                 { "server.dll", 0xF40E0, "55 8B EC 56 8B F1 8B 86 ? ? ? ? C1 E8 0B A8 01 74 05 E8 ? ? ? ? 8B 45 08 F3" };
+    Offset EyePosition =                 { "server.dll", 0xF4CC0, "55 8B EC 56 8B F1 8B 86 ? ? ? ? C1 E8 0B A8 01 74 05 E8 ? ? ? ? 8B 45 08 F3" };
 
     /*Offset GetRenderTarget =             { "materialsystem.dll", 0x2CD30, "83 79 4C 00" };
     Offset Viewport =                    { "materialsystem.dll", 0x2E010, "55 8B EC 8B 45 0C 53 8B 5D" };
@@ -88,8 +88,8 @@ public:
     Offset CreatePingPointer = { "client.dll", 0x280660, "55 8B EC 83 EC 14 53 56 8B F1 8B 8E ? ? ? ? 57 85 C9 74 30" };
     //Offset ClientThink = { "client.dll", 0x27EA30, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC ? ? ? ?" };
     Offset GetPortalPlayer = { "client.dll", 0x8DCA0, "55 8B EC 8B 45 08 83 F8 FF 75 10 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2" };
-    Offset PrecacheParticleSystem = { "server.dll", 0x16DF40, "55 8B EC 8B 0D ? ? ? ? 8B 55 08 8B 01 8B 40 20 6A 00 6A FF" };
-    Offset Precache = { "server.dll", 0x35A2C0, "E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ?" };
+    Offset PrecacheParticleSystem = { "server.dll", 0x16E9E0, "55 8B EC 8B 0D ? ? ? ? 8B 55 08 8B 01 8B 40 20 6A 00 6A FF" };
+    Offset Precache = { "server.dll", 0x35AA10, "E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 8B 90 84 00 00 00 83 C4 28 FF D2 84 C0" };
     //Offset GetActivePortalWeapon = { "client.dll", 0x2A8910, "8B 89 ? ? ? ? 83 F9 FF 74 1F 8B 15 ? ? ? ?" };
 
     Offset SetControlPoint = { "client.dll", 0x17BD30, "55 8B EC 53 56 8B 75 0C 57 8B F9 BB ? ? ? ? 84 9F ? ? ? ?" };
@@ -123,7 +123,7 @@ public:
 
     //Grababbles
     //Offset Weapon_ShootPosition =        { "client.dll", 0x2A8A60, "55 8B EC 8B 01 8B 90 ? ? ? ? 56 8B 75 08 56 FF D2 8B C6 5E 5D C2 04 00" };
-    Offset Weapon_ShootPosition = { "server.dll", 0x1033C0, "55 8B EC 8B 01 8B 90 ? ? ? ? 56 8B 75 08 56 FF D2 8B C6 5E 5D C2 04 00" };
+    Offset Weapon_ShootPosition = { "server.dll", 0x368270, "55 8B EC 8B 01 8B 90 00 02 00 00 56 8B 75 08 56 FF D2 8B C6 5E 5D C2 04 00" };
     Offset ComputeError = { "server.dll", 0x3C8140, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC ? ? ? ? 56 8B F1 8B 86 ? ? ? ? 57 83 F8 FF 74 2A" };
     Offset UpdateObject = { "server.dll", 0x3CA010, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC ? ? ? ? 56 57 8B F9 8B 87 ? ? ? ? 89 BD" };
     Offset UpdateObjectVM = { "server.dll", 0x3CBB10, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC ? ? ? ? 56 57 8B F9 8B 87 ? ? ? ? 83 F8" };
@@ -134,7 +134,15 @@ public:
     Offset MatrixBuildPerspectiveX = { "engine.dll", 0x2737E0, "55 8B EC 83 EC 08 F2 0F 10 45 ? F2 0F 59 05 ? ? ? ?" };
     Offset GetFOV = { "client.dll", 0x2772B0, "55 8B EC 51 56 8B F1 E8 ? ? ? ? D9 5D FC 8B 06 8B 90 ? ? ? ? 8B CE FF D2" };
     Offset GetDefaultFOV = { "client.dll", 0x279020, "A1 ? ? ? ? F3 0F 2C 40 ? C3" };
-    Offset GetViewModelFOV = { "client.dll", 0x28AB80, "A1 ? ? ? ? D9 40 2C C3" };
+    Offset GetViewModelFOV = { "client.dll", 0x28AD20, "A1 ? ? ? ? D9 40 2C C3 CC CC CC CC CC CC CC 56 57 8B F1 E8" };
+
+    Offset SetupBones = { "client.dll", 0x641D0, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC B8 A8 1C 00 00 E8 ? ? ? ? 80 3D ? ? ? ? 00" };
+    Offset BuildTransformations = { "client.dll", 0x65D40, "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC 98 01 00 00 80 3D ? ? ? ? 00" };
+    Offset PortalPlayerDrawModel = { "client.dll", 0x27AE70, "55 8B EC 56 8B F1 80 BE 6C 03 00 00 00 75 07" };
+    Offset ShouldSkipPlayerInMainView = { "client.dll", 0x27AD50, "55 8B EC A1 ? ? ? ? 83 EC 20 83 78 30 00 56 8B F1 0F 84 ? ? ? ?" };
+    Offset RumbleEffect = { "client.dll", 0xBEF30, "55 8B EC 8B 45 14 8B 4D 10 8B 55 0C 50 8B 45 08 51 52 50 B9 ? ? ? ? E8 ? ? ? ? 5D C3 CC 55 8B EC 56" };
+    Offset DefaultTouch = { "server.dll", 0xD7790, "55 8B EC 56 8B F1 8B 86 ? ? ? ? C1 E8 1C A8 01 75 ? 57 8B 7D 08 85 FF 74 ? 8B 17 8B 82 ? ? ? ? 8B CF FF D0 84 C0 74 ? 57 56 E8 ? ? ? ? 83 C4 08 84 C0 74 ? 0F 57 C0 51 F3 0F 11 04 24 56 57 8D 8E ? ? ? ? E8 ? ? ? ? 8B 8E ? ? ? ? D1 E9 F6 C1 01 75 ? 8B 17 8B 82 ? ? ? ? 56 8B CF FF D0" };
+    Offset InputUse = { "server.dll", 0xE13F0, "55 8B EC 0F 57 C0 53 56 57 8B 7D 08 8B 57 04 51 8B D9 8B 4F 1C 8B 03 F3 0F 11 04 24 51 8B 0F 52 8B 90 ? ? ? ? 51 8B CB FF D2" };
 
     // Multiplayer
     Offset GetOwner = { "server.dll", 0xD7550, "8B 81 ? ? ? ? 83 F8 FF 74 23 8B 15 ? ? ? ?" };

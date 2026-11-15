@@ -57,7 +57,7 @@ If the game is crashing, try:
 3. Set to x86 Debug or Release
 4. Build -> Build Solution
 
-Note: After building, it will attempt to copy the new d3d9.dll to your Portal 2/bin directory.
+Note: To copy the new d3d9.dll to your Portal 2/bin directory after each build, build with `/p:Portal2Dir="<path to Portal 2>"`.
 
 ## Based on
 * [l4d2vr](https://github.com/sd805/l4d2vr)

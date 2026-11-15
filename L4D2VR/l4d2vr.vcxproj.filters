@@ -24,6 +24,24 @@
     <ClInclude Include="vr.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="body.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cinematic.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="interact.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="haptics.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="netvars.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rig.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="hooks.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -837,6 +855,24 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="vr.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="body.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cinematic.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="interact.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="haptics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="netvars.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="game.cpp">

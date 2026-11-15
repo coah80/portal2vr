@@ -91,7 +91,8 @@ public:
 	float m_HeightOffset = 0.0;
 	bool m_RoomscaleActive = false;
 
-	Vector m_LeftControllerPosAbs;											
+	Vector m_LeftControllerPosAbs;
+	Vector m_LeftControllerPosRel;
 	QAngle m_LeftControllerAngAbs;
 	Vector m_RightControllerPosRel;											
 	QAngle m_RightControllerAngAbs;
@@ -146,7 +147,10 @@ public:
 
 	// action set
 	vr::VRActionSetHandle_t m_ActionSet;
-	vr::VRActiveActionSet_t m_ActiveActionSet;
+	vr::VRActionSetHandle_t m_BaseActionSet;
+	vr::VRActiveActionSet_t m_ActiveActionSets[2];
+	vr::VRActionHandle_t m_SkeletonLeft = vr::k_ulInvalidActionHandle;
+	vr::VRActionHandle_t m_SkeletonRight = vr::k_ulInvalidActionHandle;
 
 	// actions
 	vr::VRActionHandle_t m_ActionJump;
@@ -194,6 +198,10 @@ public:
 	float m_HudSize = 4.0;
 	bool m_HudAlwaysVisible = false;
 	int m_AimMode = 2;
+	bool m_BodyEnabled = true;
+	float m_HapticStrength = 1.0f;
+	bool m_CinematicCamera = true;
+	bool m_PhysicalInteraction = true;
 
 	VR() {};
 	VR(Game *game);
@@ -216,6 +224,9 @@ public:
 	QAngle GetRightControllerAbsAngle();
 	QAngle& GetRightControllerAbsAngleConst();
 	Vector GetRightControllerAbsPos(Vector eyePosition = {0, 0, 0});
+	Vector GetLeftControllerAbsPos();
+	void PublishInteract();
+	bool GripHeld(const char* source);
 	Vector GetRecommendedViewmodelAbsPos(Vector eyePosition);
 	QAngle GetRecommendedViewmodelAbsAngle();
 	void UpdateHMDAngles();
@@ -229,6 +240,8 @@ public:
 	void ResetPosition();
 	void GetPoseData(vr::TrackedDevicePose_t &poseRaw, TrackedDevicePoseData &poseOut);
 	void ParseConfigFile();
+	void ApplyFeatureSettings();
+	void PublishBody();
 	void WaitForConfigUpdate();
 	Vector Trace(uint32_t* localPlayer);
 	Vector TraceEye(uint32_t* localPlayer, Vector cameraPos, Vector eyePos, QAngle& eyeAngle);

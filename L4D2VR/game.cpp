@@ -6,6 +6,11 @@
 #include "hooks.h"
 #include "offsets.h"
 #include "sigscanner.h"
+#include "netvars.h"
+#include "body.h"
+#include "haptics.h"
+#include "cinematic.h"
+#include "interact.h"
 
 Game::Game()
 {
@@ -30,13 +35,30 @@ Game::Game()
     m_ModelRender = (IModelRender *)GetInterface("engine.dll", "VEngineModel016");
     m_VguiInput = (IInput *)GetInterface("vgui2.dll", "VGUI_InputInternal001");
     m_VguiSurface = (ISurface *)GetInterface("vguimatsurface.dll", "VGUI_Surface031");
+    m_BaseClientDll = (IBaseClientDLL *)GetInterface("client.dll", "VClient016");
 
     m_Offsets = new Offsets();
 
     m_ClientMode = **(IClientMode***)(m_Offsets->g_pClientMode.address);
 
+    std::cout << "Interfaces ready\n";
+    if (m_BaseClientDll)
+        Netvars::Init(m_BaseClientDll);
+
     m_VR = new VR(this);
+    std::cout << "VR " << (m_VR->m_IsInitialized ? "ready" : "failed") << "\n";
     m_Hooks = new Hooks(this);
+    std::cout << "Hooks ready\n";
+
+    if (m_VR->m_IsInitialized)
+    {
+        Body::Install(this, m_VR);
+        Haptics::Install(this, m_VR);
+        Cinematic::Install(this, m_VR);
+        Interact::Install(this, m_VR);
+        m_VR->ApplyFeatureSettings();
+        std::cout << "Body, haptics, interactions and cutscene camera ready\n";
+    }
 
     m_Initialized = true;
 }
@@ -53,12 +75,20 @@ void *Game::GetInterface(const char *dllname, const char *interfacename)
 
 void Game::errorMsg(const char *msg)
 {
-    MessageBox(0, msg, "L4D2VR", MB_ICONERROR | MB_OK);
+    MessageBox(0, msg, "Portal 2 VR", MB_ICONERROR | MB_OK);
 }
 
 CBaseEntity *Game::GetClientEntity(int entityIndex)
 {
     return (CBaseEntity *)(m_ClientEntityList->GetClientEntity(entityIndex));
+}
+
+void *Game::GetClientEntityFromHandle(int handle)
+{
+    constexpr int kEntityFromHandleSlot = 4;
+    using tEntityFromHandle = void *(__thiscall *)(IClientEntityList *list, int handle);
+    tEntityFromHandle entityFromHandle = reinterpret_cast<tEntityFromHandle>((*reinterpret_cast<void ***>(m_ClientEntityList))[kEntityFromHandleSlot]);
+    return entityFromHandle(m_ClientEntityList, handle);
 }
 
 char *Game::getNetworkName(uintptr_t *entity)

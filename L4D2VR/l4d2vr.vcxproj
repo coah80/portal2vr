@@ -84,8 +84,8 @@
       <AdditionalDependencies>openvr_api.lib;$(SolutionDir)dxvk\lib32\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>$(SolutionDir)dxvk\src\d3d9\d3d9.def</ModuleDefinitionFile>
     </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "H:\SteamLibrary\steamapps\common\Portal 2\bin\$(TargetName)$(TargetExt)"</Command>
+    <PostBuildEvent Condition="'$(Portal2Dir)'!=''">
+      <Command>copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "$(Portal2Dir)\bin\$(TargetName)$(TargetExt)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -112,8 +112,8 @@
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>openvr_api.lib;$(SolutionDir)dxvk\lib32\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "H:\SteamLibrary\steamapps\common\Portal 2\bin\$(TargetName)$(TargetExt)"</Command>
+    <PostBuildEvent Condition="'$(Portal2Dir)'!=''">
+      <Command>copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "$(Portal2Dir)\bin\$(TargetName)$(TargetExt)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
 
@@ -387,6 +387,12 @@
     <ClInclude Include="sdk\vector.h" />
     <ClInclude Include="sigscanner.h" />
     <ClInclude Include="vr.h" />
+    <ClInclude Include="body.h" />
+    <ClInclude Include="cinematic.h" />
+    <ClInclude Include="interact.h" />
+    <ClInclude Include="haptics.h" />
+    <ClInclude Include="netvars.h" />
+    <ClInclude Include="rig.h" />
     <ClInclude Include="sdk\worldsize.h" />
   </ItemGroup>
   <ItemGroup>
@@ -530,6 +536,12 @@
     <ClCompile Include="sdk\checksum_crc.cpp" />
     <ClCompile Include="sdk\newbitbuf.cpp" />
     <ClCompile Include="vr.cpp" />
+    <ClCompile Include="body.cpp" />
+    <ClCompile Include="cinematic.cpp" />
+    <ClCompile Include="interact.cpp" />
+    <ClCompile Include="haptics.cpp" />
+    <ClCompile Include="netvars.cpp" />
+    <ClCompile Include="rig.cpp" />
     <ClCompile Include="..\thirdparty\minhook\src\buffer.c" />
     <ClCompile Include="..\thirdparty\minhook\src\hook.c" />
     <ClCompile Include="..\thirdparty\minhook\src\trampoline.c" />
